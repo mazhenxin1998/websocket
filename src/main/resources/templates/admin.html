@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>管理员发送系统消息</title>
+</head>
+<body>
+
+<h2>系统管理员发送全频道广播: </h2> <br>
+
+请输入广播内容: <br>
+<input type="text" id="system-content"> <br>
+<button id="btn-send">发送广播</button>
+
+<script src="webjars/jquery/3.4.1/jquery.min.js"></script>
+
+<script>
+
+    // 这个页面也需要websocket的应用.
+    $(function () {
+
+        let ws = new WebSocket("ws://localhost:8080/server/system/put");
+        ws.onopen = function () {
+
+            alert("服务器连接成功,请开始发送频道广播!");
+        }
+
+        $("#btn-send").click(function () {
+
+            let content = $("#system-content").val();
+            // 清空.
+            $("#system-content").val("");
+
+            let json = {
+                "message": content
+            };
+
+            // 发送
+            ws.send(JSON.stringify(json));
+        });
+
+        ws.onmessage = function (evt) {
+
+
+        }
+
+        ws.onclose = function () {
+
+
+        }
+
+        ws.onerror = function () {
+
+
+        }
+
+    });
+
+
+</script>
+
+
+</body>
+</html>

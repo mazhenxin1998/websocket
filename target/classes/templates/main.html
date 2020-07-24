@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+
+    <!--    <link href="../bootstrap/css/bootstrap.min.css">-->
+    <!--    <link rel="stylesheet" href="../bootstrap/css/bootstrap-theme.min.css">-->
+    <link rel="stylesheet" href="/webjars/bootstrap/3.4.1/css/bootstrap.min.css">
+
+
+</head>
+<body>
+<h2>现在登录的用户是: <span id="username" th:text="${#request.getParameter('username')}"></span></h2>
+
+<!--显示正在和谁聊天-->
+<h3>您正在和 <span id="toChatName" th:text="${#session.getAttribute('user')}"></span> 进行聊天</h3>
+<div class="container">
+
+    <div class="row">
+        <div class="col-md-6">
+            <!--聊天区域-->
+
+            <div id="message-show" style="width: 100%; height: 300px; border: 2px solid red;opacity: 0">
+
+                <!--                <div id="content-left" style="text-align: left"></div>-->
+                <!--                <div id="content-right" style="text-align: right"></div>-->
+
+
+            </div>
+
+
+        </div>
+
+
+        <div class="col-md-4">
+            <!--系统推送区域-->
+            <div style="width: 100%;height: 150px;border: 2px solid rosybrown">我的在线好友
+
+                <ul id="userList">
+                    <!--                    这里应该循环遍历-->
+                    <li><a onclick="showChat('张三')">张三</a></li>
+                    <li><a onclick="showChat('李四')">李四</a></li>
+
+                </ul>
+
+            </div>
+            <div style="width: 100%;height: 150px;border: 2px solid rosybrown">实时好友动态:
+                <ul id="systemList">
+                </ul>
+            </div>
+            <!--            分为两个区域 一个是推送区域 一个是好友列表-->
+
+
+        </div>
+    </div>
+
+
+    <!--开启第二行-->
+    <div class="row">
+        <div class="col-md-4">
+            <div style="width: 100%; height: 50px; border: 2px solid red">
+                <input style="width: 100%; height: 50px" type="text" id="outPutMessage" class="form-control"
+                       placeholder="请输入要聊天的内容...">
+
+            </div>
+        </div>
+
+        <div class="col-md-2">
+
+            <button id="button-send" style="width: 100%;height: 50px;background-color: chocolate">我是发送按钮</button>
+        </div>
+
+    </div>
+
+    <div class="row">
+
+        <div class="col-md-12">
+
+            <div id="systemShowMessage" style="width: 100%;height: 60px;border: lightblue solid 2px; color: darkorange">
+                <!--loop是显示几次的意思-->
+                <marquee id="systemMessage-marquee" behavior="behavior" width="100%" loop="2">等待管理员进行通知</marquee>
+            </div>
+
+            <button onclick="buttonTest()">测试Marquee</button>
+
+        </div>
+
+    </div>
+
+
+</div>
+
+
+<!--<script src="../js/jquery.min.js"></script>-->
+<!--<script src="../bootstrap/js/bootstrap.min.js"></script>-->
+<script src="webjars/jquery/3.4.1/jquery.min.js"></script>
+<script src="webjars/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+
+
+<script>
+
+    // 定义全局变量
+    var toName;
+    var username;
+
+
+    function buttonTest() {
+
+        var content = "";
+        content += "<marquee id=\"systemMessage-marquee\" behavior=\"behavior\" width=\"100%\" loop=\"2\">哈哈哈哈哈哈哈哈2222</marquee>\n";
+
+        $("#systemShowMessage").html(content)
+
+
+    }
+
+
+    // showChat
+    function showChat(name) {
+
+        // 首先回显聊天窗口
+        $("#message-show").css("opacity", 1);
+
+        if (toName != null && name != toName) {
+
+            // 既不是第一次点进来, 也不是要发送消息对象的那个框框的名字,
+            // 应该清空整个聊天框的内容.
+            $("#message-show").html("");
+            // 应该从sessionStorage里面取出toName的值进行显示.
+            let dataMessage = sessionStorage.getItem(toName);
+            if (dataMessage != null) {
+
+                $("#message-show").html(dataMessage);
+            }
+
+        }
+
+        toName = name;
+
+        // 修改正在和谁聊天
+        $("#toChatName").html(name);
+    }
+
+    // 初始化webSocket
+    $(function () {
+
+        let ws = new WebSocket("ws://localhost:8080/chat");
+        ws.onopen = function () {
+            // 连接建立触发的方法
+            $("#username").html("用户: " + username + "<span style='float: right; color: red'>在线</span>")
+
+        }
+
+        ws.onmessage = function (evt) {
+
+            // 接受消息
+            let data = evt.data;
+            let res = JSON.parse(data);
+            let userList = "";
+            var systemList = "";
+            var contentLeft = "";
+
+            if (res.system) {
+
+                // 先判断是否是系统管理员的广播推送
+                let message = res.message;
+                let array = message.split(",");
+                if (array[0] == 500) {
+
+                    // 系统推送.
+                    var content = "";
+                    content += "<marquee id=\"systemMessage-marquee\" behavior=\"behavior\" width=\"100%\" loop=\"2\">" + array[1] + "</marquee>\n";
+                    $("#systemShowMessage").html(content)
+                } else {
+
+                    if (res.friendList != null) {
+                        $.each(res.friendList, function (index, name) {
+
+                            // 目前我的好友不能包括我自己
+                            if (name != username) {
+
+                                userList += "<li><a onclick='showChat(\"" + name + "\")'>" + name + "</a></li>\n";
+                                // userList += "<li><a onclick=\"showChat(" + '+name+' + ")\">" + name + "</a></li>\n";
+                            }
+                        })
+
+                    }
+
+                    systemList += "<li>" + res.message + "</li>\n";
+                    $("#userList").html(userList);
+                    $("#systemList").append(systemList);
+                }
+            } else {
+
+                // 对消息进行展示.
+                // 接受来的消息.
+                // 这里接受来的消息，指的是别人发送过来的消息，需要放在左侧.
+                let content = res.message;
+                let fromName = res.fromName;
+                contentLeft += "<div id=\"content-left\" style=\"text-align: left\">" + fromName + "说: " + content + "</div>\n";
+
+                $("#message-show").append(contentLeft);
+                //需要将该消息存到sessionStorage里面.
+                // 表示当前用户那个好友说的话.
+                sessionStorage.setItem(fromName, contentLeft);
+
+
+            }
+
+        }
+
+        ws.onerror = function () {
+
+            // 错误发生
+        }
+
+        ws.onclose = function () {
+
+            // 关闭时候触发的方法.
+            $("#username").html("用户: " + username + "<span style='float: right; color: red'>离线</span>")
+
+        }
+
+
+        // 获取输入框的值进行发送.
+        $("#button-send").click(function () {
+
+            let content = $("#outPutMessage").val();
+            // 清空输入框的值.
+            $("#outPutMessage").val("");
+            var contentRight = "";
+            // 封装消息体
+            var json = {
+                "toName": toName,
+                "message": content
+            };
+
+            // 发送数据
+            ws.send(JSON.stringify(json));
+            // 发送之后修改自己右侧的值，显示为自己输出的.
+            contentRight += "<div id=\"content-right\" style=\"text-align: right\">" + content + " :说我</div>\n";
+            $("#message-show").append(contentRight);
+            // alert("发送数据成功: " + json);
+        });
+
+
+    });
+
+
+    $(function () {
+
+        $.ajax({
+
+            url: "getUserName",
+            success: function (res) {
+
+                //  成功之后 修改username的值.
+                username = res;
+                $("#username").html("用户: " + res + "<span style='float: right; color: red'>在线</span>")
+            },
+
+            async: false
+        })
+
+    });
+
+
+</script>
+
+
+</body>
+</html>
